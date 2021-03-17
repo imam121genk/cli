@@ -24,8 +24,6 @@ func TestNewCmdView(t *testing.T) {
 		wants    ViewOptions
 		wantsErr bool
 	}{
-		// TODO web flag
-
 		{
 			name: "blank tty",
 			tty:  true,
@@ -123,14 +121,6 @@ func TestViewRun(t *testing.T) {
 		wantErrOut string
 		wantErr    bool
 	}{
-		// TODO prompt, workflows
-		// TODO name, prompt, unique
-		// TODO name, prompt, nonunique
-		// TODO name, unique
-		// TODO name, nonunique
-		// TODO ID, raw
-		// TODO ID
-		// TODO web
 		{
 			name: "prompt, no workflows",
 			tty:  true,
@@ -145,6 +135,51 @@ func TestViewRun(t *testing.T) {
 			wantErrOut: "could not fetch workflows for OWNER/REPO: no workflows are enabled",
 			wantErr:    true,
 		},
+		{
+			name: "prompt, workflows",
+			tty:  true,
+			opts: &ViewOptions{
+				Prompt: true,
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("GET", "repos/OWNER/REPO/actions/workflows"),
+					httpmock.JSONResponse(shared.WorkflowsPayload{
+						Workflows: []shared.Workflow{
+							{
+								Name:  "a workflow",
+								ID:    123,
+								Path:  ".github/workflows/flow.yml",
+								State: shared.Active,
+							},
+							{
+								Name:  "a disabled workflow",
+								ID:    456,
+								Path:  ".github/workflows/disabled.yml",
+								State: shared.DisabledManually,
+							},
+							{
+								Name:  "another workflow",
+								ID:    789,
+								Path:  ".github/workflows/another.yml",
+								State: shared.Active,
+							},
+						},
+					}))
+				// TODO content stub
+			},
+			askStubs: func(as *prompt.AskStubber) {
+				as.StubOne(1)
+			},
+			wantOut: "TODO",
+		},
+		// TODO name, prompt, unique
+		// TODO name, prompt, nonunique
+		// TODO name, unique
+		// TODO name, nonunique
+		// TODO ID, raw
+		// TODO ID
+		// TODO web
 	}
 
 	for _, tt := range tests {
