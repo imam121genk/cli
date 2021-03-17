@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/cli/cli/internal/ghrepo"
+	"github.com/cli/cli/pkg/cmd/workflow/shared"
 	"github.com/cli/cli/pkg/cmdutil"
 	"github.com/cli/cli/pkg/httpmock"
 	"github.com/cli/cli/pkg/iostreams"
@@ -113,15 +114,37 @@ func TestNewCmdView(t *testing.T) {
 
 func TestViewRun(t *testing.T) {
 	tests := []struct {
-		name      string
-		opts      *ViewOptions
-		httpStubs func(*httpmock.Registry)
-		askStubs  func(*prompt.AskStubber)
-		tty       bool
-		wantOut   string
-		wantErr   bool
+		name       string
+		opts       *ViewOptions
+		httpStubs  func(*httpmock.Registry)
+		askStubs   func(*prompt.AskStubber)
+		tty        bool
+		wantOut    string
+		wantErrOut string
+		wantErr    bool
 	}{
-		// TODO
+		// TODO prompt, workflows
+		// TODO name, prompt, unique
+		// TODO name, prompt, nonunique
+		// TODO name, unique
+		// TODO name, nonunique
+		// TODO ID, raw
+		// TODO ID
+		// TODO web
+		{
+			name: "prompt, no workflows",
+			tty:  true,
+			opts: &ViewOptions{
+				Prompt: true,
+			},
+			httpStubs: func(reg *httpmock.Registry) {
+				reg.Register(
+					httpmock.REST("GET", "repos/OWNER/REPO/actions/workflows"),
+					httpmock.JSONResponse(shared.WorkflowsPayload{}))
+			},
+			wantErrOut: "could not fetch workflows for OWNER/REPO: no workflows are enabled",
+			wantErr:    true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -148,6 +171,7 @@ func TestViewRun(t *testing.T) {
 			err := runView(tt.opts)
 			if tt.wantErr {
 				assert.Error(t, err)
+				assert.Equal(t, tt.wantErrOut, err.Error())
 				return
 			}
 			assert.NoError(t, err)
