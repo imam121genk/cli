@@ -3,10 +3,14 @@ package view
 import (
 	"bytes"
 	"io/ioutil"
+	"net/http"
 	"testing"
 
+	"github.com/cli/cli/internal/ghrepo"
 	"github.com/cli/cli/pkg/cmdutil"
+	"github.com/cli/cli/pkg/httpmock"
 	"github.com/cli/cli/pkg/iostreams"
+	"github.com/cli/cli/pkg/prompt"
 	"github.com/google/shlex"
 	"github.com/stretchr/testify/assert"
 )
@@ -109,15 +113,46 @@ func TestNewCmdView(t *testing.T) {
 
 func TestViewRun(t *testing.T) {
 	tests := []struct {
-		name string
-		// TODO
+		name      string
+		opts      *ViewOptions
+		httpStubs func(*httpmock.Registry)
+		askStubs  func(*prompt.AskStubber)
+		tty       bool
+		wantOut   string
+		wantErr   bool
 	}{
 		// TODO
 	}
 
 	for _, tt := range tests {
+		reg := &httpmock.Registry{}
+		tt.httpStubs(reg)
+		tt.opts.HttpClient = func() (*http.Client, error) {
+			return &http.Client{Transport: reg}, nil
+		}
+
+		io, _, stdout, _ := iostreams.Test()
+		io.SetStdoutTTY(tt.tty)
+		tt.opts.IO = io
+		tt.opts.BaseRepo = func() (ghrepo.Interface, error) {
+			return ghrepo.FromFullName("OWNER/REPO")
+		}
+
+		as, teardown := prompt.InitAskStubber()
+		defer teardown()
+		if tt.askStubs != nil {
+			tt.askStubs(as)
+		}
+
 		t.Run(tt.name, func(t *testing.T) {
-			// TODO
+			err := runView(tt.opts)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantOut, stdout.String())
+			reg.Verify(t)
 		})
 	}
 }
